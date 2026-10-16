@@ -173,11 +173,17 @@ async function handler(req: Request, context: Context) {
       status = 422;
       message = "Please check your input";
       details = error.flatten();
-    } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
+    } else if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof (error as { code: unknown }).code === "string"
+    ) {
+      const code = (error as { code: string }).code;
+      if (code === "P2002") {
         status = 409;
         message = "This ingredient or household recipe already exists";
-      } else if (error.code === "P2025") {
+      } else if (code === "P2025") {
         status = 404;
         message = "Record not found";
       }
