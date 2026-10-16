@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "../ui/shared";
@@ -13,9 +13,11 @@ import {
   History,
   ArrowUpRight,
   Leaf,
+  Mic,
 } from "lucide-react";
 const links = [
   ["/dashboard", "Dashboard", LayoutDashboard],
+  ["/voice", "Voice Assistant", Mic],
   ["/household", "Household", Users],
   ["/inventory", "Kitchen Inventory", Package],
   ["/recipes", "Recipe Library", BookOpen],

@@ -13,6 +13,7 @@ import {
   Clock3,
   Leaf,
   CalendarDays,
+  Mic,
 } from "lucide-react";
 import type { Household, Recipe } from "@/types";
 import { api, Badge, Loading, ErrorBox, formatDate } from "./ui/shared";
@@ -44,9 +45,14 @@ export function Dashboard() {
           </h1>
           <p>Everyone’s preferences. Every ingredient. All in one place.</p>
         </div>
-        <Link className="button primary" href="/inventory">
-          <Plus size={17} /> Update inventory
-        </Link>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Link className="button secondary" href="/voice">
+            <Mic size={17} /> Voice Assistant
+          </Link>
+          <Link className="button primary" href="/inventory">
+            <Plus size={17} /> Update inventory
+          </Link>
+        </div>
       </div>
       <section className="hero">
         <div className="hero-copy">
