@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+model Household {
+  id String @id
+  name String
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members HouseholdMember[]
+  inventory InventoryItem[]
+  overrides HouseholdRecipeOverride[]
+  plans MealPlan[]
+  events InventoryEvent[]
+  activity ActivityLog[]
+}
+model HouseholdMember {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name String
+  relationship String?
+  dietaryPreference String
+  allergies Json
+  dislikes Json
+  preferredLanguage String @default("Hindi")
+  active Boolean @default(true)
+  participating Boolean @default(true)
+  fasting Boolean @default(false)
+  dietaryRules DietaryRule[]
+  fastingRule FastingRule?
+  participations MealParticipant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model DietaryRule {
+  id String @id @default(cuid())
+  memberId String
+  member HouseholdMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  target String
+  value String
+  action String @default("EXCLUDE")
+}
+model FastingRule {
+  id String @id @default(cuid())
+  memberId String @unique
+  member HouseholdMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  permittedIngredients Json
+  prohibitedIngredients Json
+  permittedCategories Json
+  prohibitedCategories Json
+  notes String @default("")
+}
+model Ingredient {
+  id String @id
+  name String
+  category String
+  inventory InventoryItem[]
+  recipes RecipeIngredient[]
+}
+model InventoryItem {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  quantity Float?
+  unit String
+  availability String @default("UNKNOWN")
+  purchaseDate DateTime?
+  expiryDate DateTime?
+  notes String?
+  updatedAt DateTime @updatedAt
+  events InventoryEvent[]
+  @@unique([householdId, ingredientId])
+}
+model Recipe {
+  id String @id @default(cuid())
+  name String
+  description String
+  mealCategory String
+  defaultServings Int
+  prepMinutes Int
+  cookMinutes Int
+  advancePreparation String
+  dietaryMetadata Json
+  substitutions Json
+  source String @default("LOCAL")
+  preferredLanguage String?
+  ingredients RecipeIngredient[]
+  instructions RecipeInstruction[]
+  originals HouseholdRecipeOverride[] @relation("Original")
+  custom HouseholdRecipeOverride? @relation("Custom")
+  plans MealPlan[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model RecipeIngredient {
+  id String @id @default(cuid())
+  recipeId String
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  quantity Float
+  unit String
+  @@unique([recipeId, ingredientId])
+}
+model RecipeInstruction {
+  id String @id @default(cuid())
+  recipeId String
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  position Int
+  text String
+  @@unique([recipeId, position])
+}
+model HouseholdRecipeOverride {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  originalRecipeId String
+  originalRecipe Recipe @relation("Original", fields: [originalRecipeId], references: [id], onDelete: Restrict)
+  recipeId String @unique
+  recipe Recipe @relation("Custom", fields: [recipeId], references: [id], onDelete: Cascade)
+  preferred Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([householdId, originalRecipeId])
+}
+model MealPlan {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipeId String?
+  recipe Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  scheduledAt DateTime
+  status String @default("DRAFT")
+  stateVersion Int
+  participants MealParticipant[]
+}
+model MealParticipant {
+  id String @id @default(cuid())
+  mealPlanId String
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  memberId String?
+  member HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  memberNameSnapshot String
+  @@unique([mealPlanId, memberId])
+}
+model InventoryEvent {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  inventoryItemId String?
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  type String
+  before Json?
+  after Json?
+  stateVersion Int
+  createdAt DateTime @default(now())
+}
+model ActivityLog {
+  id String @id @default(cuid())
+  householdId String
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  type String
+  entityId String
+  description String
+  stateVersion Int
+  createdAt DateTime @default(now())
+  @@index([householdId, createdAt])
+}
