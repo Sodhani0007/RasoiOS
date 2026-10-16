@@ -14,6 +14,7 @@ import {
   Leaf,
   CalendarDays,
   Mic,
+  ShoppingBag,
 } from "lucide-react";
 import type { Household, Recipe } from "@/types";
 import { api, Badge, Loading, ErrorBox, formatDate } from "./ui/shared";
@@ -45,9 +46,12 @@ export function Dashboard() {
           </h1>
           <p>Everyone’s preferences. Every ingredient. All in one place.</p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <Link className="button secondary" href="/voice">
             <Mic size={17} /> Voice Assistant
+          </Link>
+          <Link className="button secondary" href="/groceries">
+            <ShoppingBag size={17} /> Grocery Gaps
           </Link>
           <Link className="button primary" href="/inventory">
             <Plus size={17} /> Update inventory

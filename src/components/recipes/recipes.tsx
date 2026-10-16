@@ -11,7 +11,9 @@ import {
   Plus,
   Trash2,
   ChefHat,
+  PlayCircle,
 } from "lucide-react";
+import { CookMode } from "./CookMode";
 import type { Recipe, Ingredient } from "@/types";
 import { units } from "@/lib/validation";
 import {
@@ -244,6 +246,7 @@ export function RecipeLibrary() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selected, setSelected] = useState<Recipe>();
   const [editing, setEditing] = useState<Recipe>();
+  const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
@@ -483,6 +486,16 @@ export function RecipeLibrary() {
               Close
             </button>
             <button
+              className="button secondary"
+              style={{ display: "inline-flex", gap: "6px", alignItems: "center" }}
+              onClick={() => {
+                setCookingRecipe(selected);
+                setSelected(undefined);
+              }}
+            >
+              <PlayCircle size={16} /> Cook Mode
+            </button>
+            <button
               className="button primary"
               onClick={() => {
                 const existing = recipes?.find(
@@ -501,6 +514,17 @@ export function RecipeLibrary() {
                   : "Make a household copy"}
             </button>
           </div>
+        </Modal>
+      )}
+      {cookingRecipe && (
+        <Modal
+          title={`Cooking Assistant: ${cookingRecipe.name}`}
+          onClose={() => setCookingRecipe(null)}
+        >
+          <CookMode
+            recipe={cookingRecipe}
+            onClose={() => setCookingRecipe(null)}
+          />
         </Modal>
       )}
       {editing && (

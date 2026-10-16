@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Edit2, X, AlertTriangle, ShieldCheck, ArrowRight } from "lucide-react";
+import { Check, Edit2, X, AlertTriangle, ShieldCheck, RefreshCw, Sparkles, ChefHat, Package } from "lucide-react";
+import Link from "next/link";
 import { ProposedAction, InterpretationResult } from "@/lib/validation/voice";
 import { Badge } from "../ui/shared";
+import { ApplyVoiceActionsResult } from "@/lib/db/voice-mutations";
 
 interface ActionPreviewProps {
   interpretation: InterpretationResult;
@@ -11,6 +13,7 @@ interface ActionPreviewProps {
   model?: string;
   fallbackUsed?: boolean;
   onDiscard: () => void;
+  onApplySuccess?: (result: ApplyVoiceActionsResult) => void;
 }
 
 export function ActionPreview({
@@ -19,10 +22,13 @@ export function ActionPreview({
   model,
   fallbackUsed,
   onDiscard,
+  onApplySuccess,
 }: ActionPreviewProps) {
   const [actions, setActions] = useState<ProposedAction[]>(interpretation.actions);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isApprovedLocally, setIsApprovedLocally] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const [applyResult, setApplyResult] = useState<ApplyVoiceActionsResult | null>(null);
 
   const handleActionChange = (index: number, updated: ProposedAction) => {
     const next = [...actions];
@@ -35,9 +41,38 @@ export function ActionPreview({
     if (editingIndex === index) setEditingIndex(null);
   };
 
-  const handleConfirm = () => {
-    setIsApprovedLocally(true);
-    setEditingIndex(null);
+  const handleConfirmAndApply = async () => {
+    setIsApplying(true);
+    setApplyError(null);
+
+    const idempotencyKey = `voice-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    try {
+      const res = await fetch("/api/voice/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: interpretation.transcript,
+          idempotencyKey,
+          actions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to apply actions");
+      }
+
+      setApplyResult(data.data);
+      if (onApplySuccess) {
+        onApplySuccess(data.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to apply confirmed actions:", err);
+      setApplyError(err.message || "Failed to persist actions to kitchen database");
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const renderActionReadable = (action: ProposedAction) => {
@@ -89,6 +124,15 @@ export function ActionPreview({
             </Badge>
           </>
         );
+      case "member_preference_update":
+        return (
+          <>
+            <strong>Member preference update:</strong> Member{" "}
+            <span className="highlight">{action.member}</span>{" "}
+            {action.dietaryPreference && `diet: ${action.dietaryPreference}`}
+            {action.addDislike && `dislikes: +${action.addDislike}`}
+          </>
+        );
       case "meal_request":
         return (
           <>
@@ -117,7 +161,7 @@ export function ActionPreview({
         <div>
           <h2>Proposed Kitchen Changes</h2>
           <p className="muted">
-            All AI interpretations are untrusted proposals requiring your review.
+            All AI interpretations are untrusted proposals requiring your review before updating database.
           </p>
         </div>
         {provider && (
@@ -145,26 +189,59 @@ export function ActionPreview({
         </div>
       )}
 
-      {isApprovedLocally ? (
+      {applyError && (
+        <div className="notice-box error">
+          <AlertTriangle size={16} />
+          <span>{applyError}</span>
+        </div>
+      )}
+
+      {applyResult ? (
         <div className="approval-confirmation-banner">
-          <ShieldCheck size={28} className="success-icon" />
-          <div>
-            <h3>Ready to apply (Locally Approved)</h3>
-            <p>
-              Your proposal preview has been approved locally.
-              <br />
-              <small className="muted">
-                Note: In Phase 3.1, actual database writes and automatic meal replanning are simulated and not applied to production storage.
-              </small>
+          <ShieldCheck size={32} className="success-icon" />
+          <div style={{ flex: 1 }}>
+            <h3>Kitchen Memory Updated &amp; Persisted (State v{applyResult.stateVersion})</h3>
+            <p style={{ margin: "6px 0 12px 0" }}>
+              All changes were saved atomically to your persistent household database with event logging.
             </p>
+
+            <ul style={{ paddingLeft: "20px", margin: "8px 0", fontSize: "13px" }}>
+              {applyResult.appliedActions.map((res, i) => (
+                <li key={i} style={{ color: res.success ? "#2b7a2b" : "#b91c1c" }}>
+                  {res.message}
+                </li>
+              ))}
+            </ul>
+
+            {/* Replanning Insight */}
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "6px",
+                background: applyResult.replan.needsReplanning ? "#fffdf5" : "#f6f8f1",
+                border: "1px solid",
+                borderColor: applyResult.replan.needsReplanning ? "#fef08a" : "#d8dfd2",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Sparkles size={16} color="#d97706" />
+                <strong>Self-Correcting Meal Replanning Engine:</strong>
+              </div>
+              <p style={{ fontSize: "13px", marginTop: "4px" }}>
+                {applyResult.replan.explanation}
+              </p>
+
+              <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                <Link href="/meal-planner" className="button primary sm">
+                  <ChefHat size={14} /> View Meal Planner
+                </Link>
+                <Link href="/inventory" className="button secondary sm">
+                  <Package size={14} /> View Inventory
+                </Link>
+              </div>
+            </div>
           </div>
-          <button
-            type="button"
-            className="button secondary sm"
-            onClick={() => setIsApprovedLocally(false)}
-          >
-            Review or Edit Again
-          </button>
         </div>
       ) : (
         <div className="actions-list">
@@ -285,18 +362,27 @@ export function ActionPreview({
           type="button"
           className="button secondary"
           onClick={onDiscard}
+          disabled={isApplying}
         >
-          Cancel & Discard
+          {applyResult ? "Done" : "Cancel & Discard"}
         </button>
 
-        {!isApprovedLocally && (
+        {!applyResult && (
           <button
             type="button"
             className="button primary"
-            onClick={handleConfirm}
-            disabled={actions.length === 0}
+            onClick={handleConfirmAndApply}
+            disabled={actions.length === 0 || isApplying}
           >
-            <Check size={18} /> Confirm proposals (Ready to apply)
+            {isApplying ? (
+              <>
+                <RefreshCw size={16} className="spin" /> Updating Kitchen Memory...
+              </>
+            ) : (
+              <>
+                <Check size={18} /> Confirm &amp; Apply to Kitchen
+              </>
+            )}
           </button>
         )}
       </div>

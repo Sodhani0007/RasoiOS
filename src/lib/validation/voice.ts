@@ -8,6 +8,7 @@ export const actionTypeSchema = z.enum([
   "inventory_remove_quantity",
   "fasting_status_update",
   "meal_request",
+  "member_preference_update",
   "unknown",
 ]);
 
@@ -65,6 +66,18 @@ export const fastingStatusUpdateActionSchema = z
   })
   .strict();
 
+export const memberPreferenceUpdateActionSchema = z
+  .object({
+    type: z.literal("member_preference_update"),
+    member: z.string().trim().min(1),
+    memberId: z.string().optional(),
+    dietaryPreference: z.string().optional(),
+    addDislike: z.string().optional(),
+    removeDislike: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .strict();
+
 export const mealRequestActionSchema = z
   .object({
     type: z.literal("meal_request"),
@@ -90,6 +103,7 @@ export const proposedActionSchema = z.discriminatedUnion("type", [
   inventoryAddQuantityActionSchema,
   inventoryRemoveQuantityActionSchema,
   fastingStatusUpdateActionSchema,
+  memberPreferenceUpdateActionSchema,
   mealRequestActionSchema,
   unknownActionSchema,
 ]);
@@ -120,3 +134,15 @@ export const voiceInterpretRequestSchema = z
   .strict();
 
 export type VoiceInterpretRequest = z.infer<typeof voiceInterpretRequestSchema>;
+
+export const voiceConfirmRequestSchema = z
+  .object({
+    transcript: z.string().optional(),
+    idempotencyKey: z.string().trim().min(1, "idempotencyKey is required"),
+    expectedStateVersion: z.number().int().nonnegative().optional(),
+    actions: z.array(proposedActionSchema).min(1, "At least one action is required"),
+  })
+  .strict();
+
+export type VoiceConfirmRequest = z.infer<typeof voiceConfirmRequestSchema>;
+

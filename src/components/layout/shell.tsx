@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   Leaf,
   Mic,
+  ShoppingBag,
 } from "lucide-react";
 const links = [
   ["/dashboard", "Dashboard", LayoutDashboard],
@@ -22,6 +23,7 @@ const links = [
   ["/inventory", "Kitchen Inventory", Package],
   ["/recipes", "Recipe Library", BookOpen],
   ["/meal-planner", "Meal Planner", CalendarDays],
+  ["/groceries", "Grocery Gaps", ShoppingBag],
   ["/activity", "Activity History", History],
 ] as const;
 export function Shell({ children }: { children: React.ReactNode }) {

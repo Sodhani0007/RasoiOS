@@ -227,6 +227,21 @@ export async function interpretVoiceCommand(
         break;
       }
 
+      case "member_preference_update": {
+        const rawMember = String(act.member || "").trim();
+        const resolved = resolveMember(rawMember, context?.members);
+        actions.push({
+          type: "member_preference_update",
+          member: resolved.name,
+          memberId: resolved.memberId,
+          dietaryPreference: act.dietaryPreference ? String(act.dietaryPreference) : undefined,
+          addDislike: act.addDislike ? String(act.addDislike) : undefined,
+          removeDislike: act.removeDislike ? String(act.removeDislike) : undefined,
+          notes: act.notes ? String(act.notes) : undefined,
+        });
+        break;
+      }
+
       case "unknown":
       default: {
         actions.push({
