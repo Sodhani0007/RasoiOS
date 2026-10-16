@@ -29,7 +29,13 @@ export type DietaryMember = {
 };
 export type VerifiableRecipe = {
   name: string;
-  ingredients: { ingredientId: string; quantity: unknown; unit: string }[];
+  ingredients: {
+    ingredientId: string;
+    quantity: unknown;
+    unit: string;
+    quantityStatus?: string;
+    uncertain?: boolean;
+  }[];
 };
 export type Violation = {
   memberId: string;
@@ -125,6 +131,13 @@ export function verifyRecipe(
         `${member.name}: active fast has no configured ingredient rules.`,
       );
     for (const ingredient of recipe.ingredients) {
+      if (
+        ingredient.uncertain ||
+        (ingredient.quantityStatus && ingredient.quantityStatus !== "KNOWN")
+      )
+        clarifications.push(
+          `${member.name}: ${ingredient.ingredientId} has unresolved source details.`,
+        );
       const id = normalizeIngredient(ingredient.ingredientId),
         knowledge = ingredientKnowledge(id),
         cats = knowledge?.categories ?? [];

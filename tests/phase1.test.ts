@@ -12,7 +12,7 @@ const { convertQuantity, expiryState } = await import(
 const { GET, POST, PATCH, DELETE } = await import(
   "../src/app/api/[...path]/route"
 );
-beforeAll(() => {
+beforeAll(async () => {
   execFileSync(process.execPath, ["scripts/migrate.mjs"], {
     env: process.env,
     stdio: "pipe",

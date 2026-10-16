@@ -2168,3 +2168,473 @@ a:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phase 2.5: one visual language for personal choices and kitchen coordination. */
+.login-page {
+  min-height: 100vh;
+  background: #f8f6ef;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: center;
+  gap: 7vw;
+  padding: 8vw;
+}
+.login-intro h1 {
+  font-size: clamp(36px, 4.7vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -2px;
+  color: #203d2b;
+  margin: 25px 0;
+}
+.login-intro p {
+  max-width: 470px;
+  font-size: 18px;
+  line-height: 1.8;
+  color: #6c756b;
+}
+.login-card {
+  max-width: 440px;
+  padding: 36px;
+  display: grid;
+  gap: 22px;
+  background: #fff;
+}
+.login-card h2 {
+  font-size: 26px;
+  margin: 0;
+}
+.login-card p {
+  margin: 0;
+  color: #687568;
+  line-height: 1.6;
+}
+.portal-pills {
+  display: flex;
+  gap: 12px;
+  margin-top: 35px;
+}
+.portal-pills span {
+  padding: 9px 18px;
+  border: 1px solid #cfd8c9;
+  border-radius: 30px;
+  color: #48624b;
+}
+.portal-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+.portal-summary > .card,
+.portal-form,
+.request-card,
+.schedule-card,
+.discovery,
+.cook-language {
+  padding: 26px;
+}
+.portal-stack {
+  display: grid;
+  gap: 22px;
+}
+.portal-form {
+  margin-bottom: 24px;
+}
+.portal-form .form-grid {
+  margin: 20px 0;
+}
+.portal-form > .field {
+  margin: 14px 0;
+}
+.portal-summary p,
+.request-card p,
+.schedule-card p,
+.discovery p {
+  line-height: 1.65;
+}
+.portal-summary h2,
+.request-card h2,
+.schedule-card h2,
+.discovery h2 {
+  margin: 12px 0 16px;
+}
+.request-card details,
+.schedule-card details {
+  margin: 18px 0;
+}
+.request-card summary,
+.discovery-entry > summary {
+  font-weight: 650;
+  cursor: pointer;
+  padding: 12px 0;
+  color: #325238;
+}
+.notice {
+  background: #fff7e5;
+  border-left: 3px solid #ce9b41;
+  padding: 14px 18px;
+  border-radius: 6px;
+  margin: 14px 0;
+  line-height: 1.7;
+}
+.notice p {
+  margin: 6px 0;
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.7;
+  margin: 18px 0;
+}
+.check input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 4px;
+  accent-color: #3c6544;
+}
+.search-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  margin: 18px 0;
+}
+.recipe-result {
+  border: 1px solid #e0e4d9;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  padding: 16px;
+  display: grid;
+  gap: 7px;
+  cursor: pointer;
+  color: #2c4331;
+}
+.recipe-result:hover,
+.recipe-result.selected {
+  border-color: #578161;
+  background: #f1f7ee;
+}
+.recipe-result span,
+.recipe-result small {
+  color: #6d7769;
+  font-size: 12px;
+}
+.recipe-preview {
+  border-top: 1px solid #e5e8de;
+  padding-top: 24px;
+}
+.recipe-ingredients small {
+  display: block;
+  font-weight: 400;
+  color: #7d8377;
+  font-size: 11px;
+  max-width: 300px;
+  white-space: normal;
+}
+.discovery-entry {
+  padding: 20px;
+  margin-bottom: 28px;
+}
+.discovery-entry > .discovery {
+  border: 0;
+  box-shadow: none;
+  padding: 10px 0;
+}
+.draft-ingredient {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin: 14px 0;
+}
+.draft-ingredient label {
+  font-size: 12px;
+  display: grid;
+  gap: 7px;
+}
+.draft-ingredient .check {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+.draft-ingredient input,
+.draft-ingredient select {
+  width: 100%;
+}
+.draft-ingredient .check input {
+  width: 18px;
+}
+.cook-dish {
+  border-top: 1px solid #dfe5d9;
+  padding: 24px 0;
+}
+.cook-dish h3 {
+  font-size: 23px;
+}
+.participant-brief {
+  display: grid;
+  gap: 10px;
+  background: #f1f5ee;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 18px 0;
+}
+.participant-brief p {
+  font-size: 14px;
+  margin: 4px 0;
+}
+.cook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.cook-actions .button {
+  font-size: 15px;
+  min-height: 50px;
+}
+.cook-portal .instructions li {
+  font-size: 17px;
+  line-height: 1.8;
+}
+.cook-report {
+  border-top: 1px solid #dfe5d9;
+  margin-top: 25px;
+  padding-top: 20px;
+  display: grid;
+  gap: 12px;
+}
+.cook-language {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-bottom: 25px;
+}
+.cook-language .field {
+  min-width: 220px;
+}
+.account-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e5e8de;
+}
+.schedule-card .table-scroll {
+  margin: 20px 0;
+}
+@media (max-width: 850px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    padding: 35px 22px;
+    gap: 25px;
+  }
+  .login-intro h1 {
+    font-size: 39px;
+    letter-spacing: -1px;
+  }
+  .login-card {
+    max-width: none;
+  }
+  .portal-summary {
+    grid-template-columns: 1fr;
+  }
+  .draft-ingredient {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+  .search-results {
+    grid-template-columns: 1fr;
+  }
+  .cook-dish .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .portal-summary > .card,
+  .portal-form,
+  .request-card,
+  .schedule-card,
+  .discovery {
+    padding: 18px;
+  }
+  .cook-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .cook-actions .button {
+    width: 100%;
+  }
+  .login-intro p {
+    font-size: 16px;
+  }
+}
+
+/* Login-free household interfaces */
+.view-switch {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.view-switch .button {
+  padding: 8px 14px;
+}
+.household-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.household-select select {
+  max-width: 260px;
+  padding: 8px;
+  border: 1px solid #deded5;
+  border-radius: 8px;
+  background: white;
+}
+.profile-picker {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.profile-picker .field {
+  min-width: 220px;
+}
+.profile-picker p {
+  color: var(--muted);
+}
+.view-choice {
+  display: block;
+  padding: 36px;
+  min-height: 240px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+.view-choice:hover {
+  transform: translateY(-2px);
+  border-color: #667c43;
+}
+.view-choice h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28px;
+}
+.view-choice p {
+  line-height: 1.7;
+}
+.cook-choice details {
+  margin-top: 14px;
+}
+.cook-choice summary {
+  cursor: pointer;
+}
+.cook-choice .portal-form {
+  padding-top: 14px;
+}
+.recipe-autocomplete {
+  position: relative;
+  width: 100%;
+}
+.recipe-autocomplete input {
+  width: 100%;
+}
+.autocomplete-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  min-width: 240px;
+  background: white;
+  border: 1px solid #d8dfd4;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px #17382525;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.autocomplete-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+.autocomplete-menu li {
+  padding: 11px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.autocomplete-menu li[aria-selected="true"] {
+  background: #edf3e6;
+}
+.autocomplete-menu small {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: #617158;
+}
+.autocomplete-menu p {
+  padding: 12px;
+  margin: 0;
+}
+.meal-basket {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.basket-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  border: 1px solid #dde4d7;
+  border-radius: 12px;
+  background: #f5f8f0;
+  padding: 15px;
+}
+.basket-item strong {
+  flex: 1;
+  min-width: 180px;
+}
+.basket-item input {
+  width: 100px;
+}
+.shortage-panel {
+  margin: 20px 0;
+}
+@media (max-width: 760px) {
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 12px 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .household-select select {
+    max-width: 210px;
+  }
+  .profile-picker {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .view-choice {
+    padding: 24px;
+    min-height: 200px;
+  }
+  .view-switch {
+    margin-left: auto;
+  }
+  .view-switch .button {
+    font-size: 12px;
+  }
+}

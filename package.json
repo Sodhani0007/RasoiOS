@@ -13,19 +13,32 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "npm run db:generate && npm run db:migrate && npm run db:seed",
-    "format": "prettier --write src prisma/seed.ts tests scripts *.json *.mjs *.mts README.md"
+    "format": "prettier --write src prisma/seed.ts tests scripts *.json *.mjs *.mts README.md",
+    "recipes:import": "tsx scripts/import-recipes.ts",
+    "demo:showcase": "tsx scripts/seed-showcase.ts",
+    "ai:check": "tsx scripts/live-ai-check.ts",
+    "build:vercel": "node scripts/vercel-build.mjs",
+    "db:postgres:prepare": "node scripts/postgres-schema.mjs",
+    "db:export": "node scripts/export-sqlite.mjs",
+    "db:import:postgres": "node scripts/import-postgres.mjs",
+    "ai:check:providers": "tsx scripts/live-providers-check.ts",
+    "test:browser": "node scripts/browser-test.mjs",
+    "db:migrate:postgres": "npm run db:postgres:prepare && node scripts/migrate-postgres.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
+    "csv-parse": "^7.0.3",
     "decimal.js": "10.6.0",
     "lucide-react": "0.468.0",
     "next": "16.4.2",
     "openai": "7.34.0",
+    "pg": "^8.23.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "4.1.18",
     "@types/node": "22.18.6",
     "@types/react": "19.0.6",

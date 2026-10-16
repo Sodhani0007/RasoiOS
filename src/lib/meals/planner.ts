@@ -184,9 +184,20 @@ export function recommendMenus(request: PlanningRequest, data: PlanningData) {
       message:
         "Requested dish is not in the library. Generate a draft explicitly, or clear the dish to browse local options.",
     };
-  const candidates = preferredRecipes(data.recipes).filter(
+  const eligible = preferredRecipes(data.recipes).filter(
     (r) => fitsCategory(r, request.mealType) || r.id === requested?.id,
   );
+  // Bound pair enumeration for the imported library, prioritizing interpretable
+  // quantities and known ingredient composition. Explicit requests stay included.
+  const candidates = eligible
+    .sort(
+      (a, b) =>
+        Number(b.id === requested?.id) - Number(a.id === requested?.id) ||
+        Number(a.source === "MENDELEY") - Number(b.source === "MENDELEY") ||
+        a.prepMinutes + a.cookMinutes - b.prepMinutes - b.cookMinutes ||
+        a.id.localeCompare(b.id),
+    )
+    .slice(0, 40);
   const excluded: { recipeId: string; name: string; reasons: string[] }[] = [];
   const menus: Menu[] = [];
   for (const recipe of candidates) {

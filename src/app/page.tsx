@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { Home } from "@/components/portals/home";
 export default function Page() {
-  redirect("/dashboard");
+  return <Home />;
 }

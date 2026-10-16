@@ -1,10 +1,12 @@
-# RasoiOS — Phase 2
+# RasoiOS - Phase 3 + Phase 4
 
 **The Kitchen That Remembers, Decides & Coordinates.** Built for Renaissance 2026, Human Potential.
 
-A local, single-household demo for Indian household kitchen coordination. Local recipe resolution, dietary verification and meal planning need no paid API. Optional AI recipe generation uses server-side OpenAI credentials. All business data lives in SQLite, accessed through server-side Next.js routes.
+A login-free application for trusted-household kitchen coordination, with separate Family and Cook views. Local recipe resolution, dietary verification and meal planning need no paid API. AI uses Gemini for recipes and Groq for kitchen commands, with one controlled provider fallback. Local data uses SQLite; PostgreSQL migrations and safe data transfer are prepared for Vercel.
 
-See [PHASE2.md](PHASE2.md) for the complete Phase 2 module map, APIs, rule semantics, AI setup, verification limits and Phase 3 handoff.
+See [PHASE34.md](PHASE34.md) for current implementation and test results, and [DEPLOYMENT.md](DEPLOYMENT.md) for exact Vercel website and PostgreSQL migration steps. [PHASE25.md](PHASE25.md) and [PHASE2.md](PHASE2.md) retain historical implementation details.
+
+**Login-free access limitation:** The application cannot prove whether a visitor is family or cook. Cook View and its strict endpoints keep meal choices operationally read-only, but anyone can switch views or call a family endpoint. This is a trusted local demo, not role-based access security.
 
 ## Run locally
 
@@ -14,14 +16,16 @@ Use Node.js 22.12+ (Node 24 LTS recommended) and npm. From this folder in PowerS
 npm.cmd ci
 Copy-Item .env.example .env
 npm.cmd run db:setup
-npm.cmd run dev
+npm.cmd run demo:showcase
+npm.cmd run build
+npm.cmd start
 ```
 
-Open **http://127.0.0.1:3000**. On macOS/Linux, use `npm` instead of `npm.cmd` and `cp .env.example .env`.
+Open **http://127.0.0.1:3000**. Choose **Enter Family View** or **Enter Cook View**; no credentials are needed. Select an existing profile in Family View. On macOS/Linux, use `npm` instead of `npm.cmd` and `cp .env.example .env`.
 
 If `.env` already exists, preserve it instead of copying over it. `DATABASE_URL="file:./dev.db"` resolves to `prisma/dev.db`. The database persists across server restarts. The seed is transactional and skips an existing demo household, preserving changes on subsequent runs. Back up the SQLite file while the server is stopped. Do not run Prisma reset against a database you want to keep.
 
-Optional `OPENAI_API_KEY` and `OPENAI_MODEL=gpt-5-mini` enable explicit AI recipe generation. Neither is required for local planning. Never expose the key through a `NEXT_PUBLIC_` variable. `.env` and database files are ignored by Git.
+Set `GEMINI_API_KEY` and `GROQ_API_KEY` in `.env.local` to enable AI. Defaults are `gemini-3.1-flash-lite` and `openai/gpt-oss-120b`; see `.env.example` for provider controls. Local planning works without keys. OpenAI remains optional and unverified. Never expose keys through `NEXT_PUBLIC_`. Environment files and databases are ignored by Git.
 
 Individual database commands:
 
@@ -40,9 +44,14 @@ npm.cmd run build
 npm.cmd start
 ```
 
-Both development and production scripts bind to loopback. This demo has no authentication and is not suitable for public hosting or multiple unrelated households.
+Both development and production scripts bind to loopback. Data APIs require no session. Household/profile selection scopes records but does not establish identity; see the trusted-household limitation in PHASE25.md.
 
 ## Implemented
+
+- Phase 2.5: login-free Family/Cook views, independent dated meal requests with multiple dishes, family-confirmed substitutions, deterministic coordination, read-only cook choices, preparation progress and reports.
+- 6,865 verified real Mendeley recipe imports, raw quantity preservation, repeat-import deduplication and household-first search.
+- Live dropdown autocomplete, atomic multi-dish selections, confirmed shortage reports with known alternatives, and YouTube tutorial links.
+- Editable AI drafts with fresh dietary checks and explicit confirmation; real Gemini recipes, Groq commands and recipe fallback verified.
 
 - Phase 2: household-first recipe resolution, ingredient scaling, deterministic dietary/fasting/allergy checks, aggregated shortages, explainable shared/two-dish recommendations, reviewed AI generation and persistent meal snapshots. See [Phase 2 details](PHASE2.md).
 
@@ -98,7 +107,7 @@ All responses use `{ "data": ..., "error": null }` or `{ "data": null, "error": 
 | `/api/activity`            | GET (latest 200 events)                       |
 | `/api/ingredients`         | GET (canonical catalog for editors)           |
 
-Creates return 201; successful reads/updates/deletes return 200. Malformed JSON returns 400, missing records 404, conflicting duplicates 409, and validation errors 422. Unsupported methods return 405 where applicable. Mutations with a foreign Origin are rejected. All member, inventory and custom recipe operations are scoped to the server-owned demo household. Strict schemas reject supplied household IDs and unexpected properties.
+Creates return 201; successful reads/updates/deletes return 200. Malformed JSON returns 400, missing records 404, conflicting duplicates 409, and validation errors 422. Unsupported methods return 405 where applicable. Mutations with a foreign Origin are rejected. All member, inventory and custom recipe operations are scoped to the selected household. Household/profile selection is not authentication. Strict schemas reject supplied household IDs and unexpected properties.
 
 Member POST requires `name`, `dietaryPreference`, `allergies`, `dislikes`, `preferredLanguage`, `active`, `participating`, `fasting`, `excludedIngredients`, `excludedCategories` and a `fastingRule` object. Relationship is optional. Fasting rules contain four arrays (`permittedIngredients`, `prohibitedIngredients`, `permittedCategories`, `prohibitedCategories`) and `notes`. Member PATCH is partial. Deactivation clears participation; reactivation preserves the cleared default until explicitly selected.
 
@@ -118,21 +127,21 @@ Tests create and migrate an isolated `prisma/test-<process>.db`, seed it, exerci
 
 Verified on Windows with Node 24.19.0, 16 October 2026:
 
-| Check                                                   | Result                                                      |
-| ------------------------------------------------------- | ----------------------------------------------------------- |
-| TypeScript strict compilation                           | Passed                                                      |
-| Vitest integration suite                                | 45 tests passed                                             |
-| Fresh isolated database migration and seed              | Passed                                                      |
-| Repeat demo setup without data loss                     | Passed                                                      |
-| Production build                                        | Passed                                                      |
-| Six application pages and five main read APIs over HTTP | All returned 200                                            |
-| npm dependency audit                                    | 0 known vulnerabilities at installation                     |
-| Browser visual/mobile interaction QA                    | Not performed: no browser surface available in this session |
+| Check                                      | Result                                                        |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| TypeScript strict compilation              | Passed                                                        |
+| Vitest integration suite                   | 82 tests passed                                               |
+| Fresh isolated database migration and seed | Passed                                                        |
+| Repeat demo setup without data loss        | Passed                                                        |
+| Production build                           | Passed                                                        |
+| Login-free pages and APIs over HTTP        | 64 checks passed                                              |
+| npm dependency audit                       | 0 known vulnerabilities at installation                       |
+| Browser visual/mobile interaction QA       | 13 real Chromium checks passed; desktop screenshots inspected |
 
 The Prisma CLI overrides pin patched `effect` and `deepmerge-ts` versions; migration, generation, seed and tests were checked with those overrides. The optional Windows Rolldown binding avoids a missing optional dependency in the test runner installation. The migration wrapper exclusively creates an absent SQLite file before applying migrations, working around a first-run Windows schema-engine failure without truncating an existing database.
 
-## Limits and Phase 3 handoff
+## Current limits
 
-The current engine verifies configured ingredient-level rules and flags uncertainty; it does not guarantee allergen-free preparation. Unknown inventory is never treated as sufficient. Meal snapshots are historical, and planning never deducts stock. Live OpenAI generation and browser visual QA were not verified in this session. The app remains a local single-household demo.
+The current engine verifies configured ingredient-level rules and flags uncertainty; it does not guarantee allergen-free preparation. Unknown inventory is never treated as sufficient. Meal snapshots are historical, and planning never deducts stock. Live OpenAI generation, hosted PostgreSQL persistence and public Vercel deployment remain unverified. The user will connect PostgreSQL and deploy through the Vercel website. Anyone with access can switch views or call family APIs; separate cook endpoints and hidden controls are not identity-based security.
 
 See [PHASE2.md](PHASE2.md) for all new endpoints, the additive migration, scoring weights, draft lifecycle, fasting semantics, automated verification, known limits and the Phase 3 integration handoff.

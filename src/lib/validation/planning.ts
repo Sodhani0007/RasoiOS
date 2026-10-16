@@ -36,7 +36,15 @@ export const dishSchema = z
   })
   .strict();
 export const menuSchema = z
-  .object({ dishes: z.array(dishSchema).min(1).max(2), date: dateOnly })
+  // Ingredient previews accept the fractional portions used by family requests.
+  // Persisted legacy MealPlan dishes keep their existing integer schema.
+  .object({
+    dishes: z
+      .array(dishSchema.extend({ servings: z.number().positive().max(100) }))
+      .min(1)
+      .max(2),
+    date: dateOnly,
+  })
   .strict();
 export const saveMealSchema = z
   .object({
@@ -49,7 +57,7 @@ export const saveMealSchema = z
 export const scaleSchema = z
   .object({
     recipeId: z.string().min(1).max(128),
-    servings: z.number().int().min(1).max(100),
+    servings: z.number().positive().max(100),
   })
   .strict();
 export const verifySchema = contextSchema

@@ -1,3 +1,5 @@
+> Historical Phase 2 reference. Phase 2.5 now uses login-free Family/Cook views, selected household/profile scoping, dataset recipes and editable drafts; see [PHASE25.md](PHASE25.md) for current behavior and limitations.
+
 # RasoiOS Phase 2 — implementation and handoff
 
 Phase 2 extends the existing Next.js/Prisma application. The existing household, recipes, inventory, IDs and overrides are preserved. No reset or replacement seed was used.

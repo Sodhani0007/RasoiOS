@@ -1,5 +1,6 @@
+import { householdId } from "../household-context";
 import { Prisma } from "@prisma/client";
-import { db, HOUSEHOLD_ID } from "./index";
+import { db } from "./index";
 import {
   canonical,
   inventorySchema,
@@ -24,14 +25,17 @@ export const recipeInclude = {
   instructions: { orderBy: { position: "asc" as const } },
   custom: true,
   generation: true,
+  importRecord: true,
+  aliases: true,
 } as const;
-export const recipeScope = {
+export const recipeScope = () => ({
   OR: [
     { source: "LOCAL" },
-    { custom: { householdId: HOUSEHOLD_ID } },
-    { generation: { householdId: HOUSEHOLD_ID } },
+    { source: "MENDELEY" },
+    { custom: { householdId: householdId() } },
+    { generation: { householdId: householdId() } },
   ],
-};
+});
 export async function log(
   tx: Prisma.TransactionClient,
   type: string,
@@ -39,12 +43,12 @@ export async function log(
   description: string,
 ) {
   const h = await tx.household.update({
-    where: { id: HOUSEHOLD_ID },
+    where: { id: householdId() },
     data: { version: { increment: 1 } },
   });
   await tx.activityLog.create({
     data: {
-      householdId: HOUSEHOLD_ID,
+      householdId: householdId(),
       type,
       entityId,
       description,
@@ -55,7 +59,7 @@ export async function log(
 }
 export async function getHousehold() {
   return db.household.findUniqueOrThrow({
-    where: { id: HOUSEHOLD_ID },
+    where: { id: householdId() },
     include: {
       members: { include: memberInclude },
       inventory: { include: { ingredient: true } },
@@ -65,14 +69,14 @@ export async function getHousehold() {
 }
 export async function getMembers() {
   return db.householdMember.findMany({
-    where: { householdId: HOUSEHOLD_ID },
+    where: { householdId: householdId() },
     include: memberInclude,
     orderBy: { createdAt: "asc" },
   });
 }
 export async function getMember(id: string) {
   const m = await db.householdMember.findFirst({
-    where: { id, householdId: HOUSEHOLD_ID },
+    where: { id, householdId: householdId() },
     include: memberInclude,
   });
   if (!m) throw new ApiError(404, "Member not found");
@@ -83,7 +87,7 @@ export async function saveMember(input: unknown, id?: string) {
   return db.$transaction(async (tx) => {
     const old = id
       ? await tx.householdMember.findFirst({
-          where: { id, householdId: HOUSEHOLD_ID },
+          where: { id, householdId: householdId() },
           include: memberInclude,
         })
       : null;
@@ -106,7 +110,7 @@ export async function saveMember(input: unknown, id?: string) {
       : await tx.householdMember.create({
           data: {
             ...data,
-            householdId: HOUSEHOLD_ID,
+            householdId: householdId(),
           } as Prisma.HouseholdMemberUncheckedCreateInput,
         });
     for (const [target, values] of [
@@ -153,7 +157,7 @@ export async function saveMember(input: unknown, id?: string) {
 export async function deleteMember(id: string) {
   return db.$transaction(async (tx) => {
     const m = await tx.householdMember.findFirst({
-      where: { id, householdId: HOUSEHOLD_ID },
+      where: { id, householdId: householdId() },
     });
     if (!m) throw new ApiError(404, "Member not found");
     await tx.householdMember.delete({ where: { id } });
@@ -168,7 +172,7 @@ export async function deleteMember(id: string) {
 }
 export async function getInventory() {
   return db.inventoryItem.findMany({
-    where: { householdId: HOUSEHOLD_ID },
+    where: { householdId: householdId() },
     include: { ingredient: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -180,7 +184,7 @@ export async function saveInventory(input: unknown, id?: string) {
   return db.$transaction(async (tx) => {
     const old = id
       ? await tx.inventoryItem.findFirst({
-          where: { id, householdId: HOUSEHOLD_ID },
+          where: { id, householdId: householdId() },
           include: { ingredient: true },
         })
       : null;
@@ -251,7 +255,7 @@ export async function saveInventory(input: unknown, id?: string) {
           include: { ingredient: true },
         })
       : await tx.inventoryItem.create({
-          data: { householdId: HOUSEHOLD_ID, ...data },
+          data: { householdId: householdId(), ...data },
           include: { ingredient: true },
         });
     const type = !old
@@ -270,7 +274,7 @@ export async function saveInventory(input: unknown, id?: string) {
     );
     await tx.inventoryEvent.create({
       data: {
-        householdId: HOUSEHOLD_ID,
+        householdId: householdId(),
         inventoryItemId: item.id,
         type,
         before: old ? JSON.parse(JSON.stringify(old)) : Prisma.JsonNull,
@@ -284,7 +288,7 @@ export async function saveInventory(input: unknown, id?: string) {
 export async function deleteInventory(id: string) {
   return db.$transaction(async (tx) => {
     const item = await tx.inventoryItem.findFirst({
-      where: { id, householdId: HOUSEHOLD_ID },
+      where: { id, householdId: householdId() },
       include: { ingredient: true },
     });
     if (!item) throw new ApiError(404, "Inventory item not found");
@@ -296,7 +300,7 @@ export async function deleteInventory(id: string) {
     );
     await tx.inventoryEvent.create({
       data: {
-        householdId: HOUSEHOLD_ID,
+        householdId: householdId(),
         inventoryItemId: id,
         type: "INVENTORY_REMOVED",
         before: JSON.parse(JSON.stringify(item)),
@@ -308,15 +312,29 @@ export async function deleteInventory(id: string) {
   });
 }
 export async function getRecipes() {
-  return db.recipe.findMany({
-    where: recipeScope,
-    include: recipeInclude,
-    orderBy: { createdAt: "asc" },
-  });
+  const [owned, library] = await Promise.all([
+    db.recipe.findMany({
+      where: {
+        OR: [
+          { custom: { householdId: householdId() } },
+          { generation: { householdId: householdId() } },
+        ],
+      },
+      include: recipeInclude,
+      orderBy: { createdAt: "desc" },
+    }),
+    db.recipe.findMany({
+      where: { source: { in: ["LOCAL", "MENDELEY"] } },
+      include: recipeInclude,
+      orderBy: { createdAt: "asc" },
+      take: 120,
+    }),
+  ]);
+  return [...owned, ...library];
 }
 export async function getRecipe(id: string) {
   const r = await db.recipe.findFirst({
-    where: { id, ...recipeScope },
+    where: { id, ...recipeScope() },
     include: recipeInclude,
   });
   if (!r) throw new ApiError(404, "Recipe not found");
@@ -327,7 +345,7 @@ export async function saveRecipe(input: unknown, id?: string) {
   return db.$transaction(async (tx) => {
     const custom = id
       ? await tx.householdRecipeOverride.findFirst({
-          where: { recipeId: id, householdId: HOUSEHOLD_ID },
+          where: { recipeId: id, householdId: householdId() },
         })
       : null;
     if (id && !custom) throw new ApiError(404, "Household recipe not found");
@@ -342,7 +360,8 @@ export async function saveRecipe(input: unknown, id?: string) {
         id: custom?.originalRecipeId ?? v.originalRecipeId ?? "",
         OR: [
           { source: "LOCAL" },
-          { generation: { householdId: HOUSEHOLD_ID } },
+          { source: "MENDELEY" },
+          { generation: { householdId: householdId() } },
         ],
       },
     });
@@ -388,7 +407,7 @@ export async function saveRecipe(input: unknown, id?: string) {
           source: "HOUSEHOLD_CUSTOM",
           custom: {
             create: {
-              householdId: HOUSEHOLD_ID,
+              householdId: householdId(),
               originalRecipeId: original.id,
             },
           },
@@ -407,7 +426,7 @@ export async function saveRecipe(input: unknown, id?: string) {
 }
 export async function getActivity() {
   return db.activityLog.findMany({
-    where: { householdId: HOUSEHOLD_ID },
+    where: { householdId: householdId() },
     orderBy: [{ createdAt: "desc" }, { stateVersion: "desc" }],
     take: 200,
   });

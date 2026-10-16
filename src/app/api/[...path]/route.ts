@@ -1,3 +1,5 @@
+import { householdContext } from "@/lib/household-context";
+import { phase25Route } from "@/lib/api-phase25";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { ZodError, z } from "zod";
@@ -9,17 +11,19 @@ import {
   generateRecipe,
   saveGeneratedRecipe,
   discardDraft,
+  updateGeneratedDraft,
 } from "@/lib/recipes/generator";
 import { dateOnly } from "@/lib/validation/planning";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 120;
 type Context = { params: Promise<{ path: string[] }> };
-async function handler(req: Request, context: Context) {
+async function scopedHandler(req: Request, context: Context) {
   try {
     const { path } = await context.params;
     const [resource, id, customId] = path;
     const method = req.method;
-    if (path.length > 3) throw new service.ApiError(404, "Endpoint not found");
+    if (path.length > 4) throw new service.ApiError(404, "Endpoint not found");
     for (const part of path)
       z.string()
         .min(1)
@@ -51,11 +55,19 @@ async function handler(req: Request, context: Context) {
     }
     const body = async () => {
       try {
-        return await req.json();
-      } catch {
+        const value = await req.json();
+        return value;
+      } catch (e) {
+        if (e instanceof service.ApiError) throw e;
         throw new service.ApiError(400, "Malformed JSON body");
       }
     };
+    const upgraded = await phase25Route(req, path, body);
+    if (upgraded)
+      return NextResponse.json(
+        { data: upgraded.data, error: null },
+        { status: upgraded.status ?? 200 },
+      );
     let data: unknown;
     let status = 200;
     const endpoint = path.join("/");
@@ -76,6 +88,7 @@ async function handler(req: Request, context: Context) {
       [
         "recipes/generate",
         "recipes/generated/save",
+        "recipes/generated/update",
         "recipes/generated/discard",
         "recipes/scale",
         "recipes/verify",
@@ -94,8 +107,11 @@ async function handler(req: Request, context: Context) {
           data = await saveGeneratedRecipe(input);
           status = 201;
           break;
+        case "recipes/generated/update":
+          data = await updateGeneratedDraft(input);
+          break;
         case "recipes/generated/discard":
-          data = discardDraft(input);
+          data = await discardDraft(input);
           break;
         case "recipes/scale":
           data = await meals.scale(input);
@@ -124,7 +140,13 @@ async function handler(req: Request, context: Context) {
         .parse(await body());
       data = await resetRecipe(customId);
     } else if (method === "GET") {
-      if (resource === "household" && !id) data = await service.getHousehold();
+      if (resource === "households" && !id)
+        data = await db.household.findMany({
+          select: { id: true, name: true },
+          orderBy: { createdAt: "asc" },
+        });
+      else if (resource === "household" && !id)
+        data = await service.getHousehold();
       else if (resource === "members" && !customId)
         data = id ? await service.getMember(id) : await service.getMembers();
       else if (resource === "inventory" && !id)
@@ -134,7 +156,10 @@ async function handler(req: Request, context: Context) {
       else if (resource === "activity" && !id)
         data = await service.getActivity();
       else if (resource === "ingredients" && !id)
-        data = await db.ingredient.findMany({ orderBy: { name: "asc" } });
+        data = await db.ingredient.findMany({
+          where: { NOT: { id: { startsWith: "dataset-" } } },
+          orderBy: { name: "asc" },
+        });
       else throw new service.ApiError(404, "Endpoint not found");
     } else if (resource === "members" && !customId) {
       if (method === "POST" && !id) {
@@ -185,6 +210,84 @@ async function handler(req: Request, context: Context) {
     if (status === 500) console.error(error);
     return NextResponse.json(
       { data: null, error: { message, details } },
+      { status },
+    );
+  }
+}
+async function handler(req: Request, context: Context) {
+  try {
+    const { path } = await context.params;
+    if (req.method !== "GET") {
+      const origin = req.headers.get("origin"),
+        url = new URL(req.url);
+      if (origin) {
+        let okay = false;
+        try {
+          const o = new URL(origin);
+          okay =
+            o.host === (req.headers.get("host") ?? url.host) &&
+            o.protocol === url.protocol;
+        } catch {}
+        if (!okay)
+          throw new service.ApiError(
+            403,
+            "Cross-origin mutations are not permitted",
+          );
+      }
+      if (req.headers.get("sec-fetch-site") === "cross-site")
+        throw new service.ApiError(
+          403,
+          "Cross-site mutations are not permitted",
+        );
+    }
+    const selectedHousehold = z
+      .string()
+      .min(1)
+      .max(128)
+      .parse(req.headers.get("x-rasoi-household") ?? "demo-household");
+    const memberId = req.headers.get("x-rasoi-member") || undefined;
+    if (
+      !(await db.household.findUnique({
+        where: { id: selectedHousehold },
+        select: { id: true },
+      }))
+    )
+      throw new service.ApiError(404, "Household not found");
+    if (
+      memberId &&
+      !(await db.householdMember.findFirst({
+        where: { id: memberId, householdId: selectedHousehold, active: true },
+        select: { id: true },
+      }))
+    )
+      throw new service.ApiError(
+        422,
+        "Select an active profile in this household",
+      );
+    return householdContext.run(
+      { householdId: selectedHousehold, memberId },
+      () => scopedHandler(req, context),
+    );
+  } catch (e) {
+    const status =
+      e instanceof service.ApiError
+        ? e.status
+        : e instanceof ZodError
+          ? 422
+          : 500;
+    if (status === 500) console.error(e);
+    return NextResponse.json(
+      {
+        data: null,
+        error: {
+          message:
+            e instanceof service.ApiError
+              ? e.message
+              : e instanceof ZodError
+                ? "Please check your input"
+                : "An unexpected error occurred",
+        },
+      },
       { status },
     );
   }

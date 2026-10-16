@@ -1,5 +1,6 @@
+import { householdId } from "../household-context";
 import { Prisma } from "@prisma/client";
-import { db, HOUSEHOLD_ID } from "../db";
+import { db } from "../db";
 import { ApiError, log, recipeInclude, recipeScope } from "../db/service";
 import {
   recommendSchema,
@@ -19,20 +20,20 @@ export async function planningData(
   date: string,
 ): Promise<PlanningData> {
   const household = await tx.household.findUniqueOrThrow({
-    where: { id: HOUSEHOLD_ID },
+    where: { id: householdId() },
     include: {
       members: { include: { dietaryRules: true, fastingRule: true } },
       inventory: true,
     },
   });
   const recipes = await tx.recipe.findMany({
-    where: recipeScope,
+    where: recipeScope(),
     include: recipeInclude,
     orderBy: { id: "asc" },
   });
   const prior = await tx.mealPlan.findMany({
     where: {
-      householdId: HOUSEHOLD_ID,
+      householdId: householdId(),
       scheduledAt: {
         gte: new Date(new Date(date).getTime() - 7 * 86400000),
         lt: new Date(date),
@@ -97,7 +98,7 @@ export async function saveMeal(input: unknown) {
     );
     const plan = await tx.mealPlan.create({
       data: {
-        householdId: HOUSEHOLD_ID,
+        householdId: householdId(),
         scheduledAt: new Date(v.request.date),
         mealType: v.request.mealType,
         servings: v.request.servings,
@@ -135,7 +136,7 @@ export async function saveMeal(input: unknown) {
 export async function getMeals(date?: string) {
   return db.mealPlan.findMany({
     where: {
-      householdId: HOUSEHOLD_ID,
+      householdId: householdId(),
       ...(date ? { scheduledAt: new Date(date) } : {}),
     },
     include: { dishes: true, participants: true },
@@ -145,12 +146,12 @@ export async function getMeals(date?: string) {
 }
 export async function getMeal(id: string) {
   const meal = await db.mealPlan.findFirst({
-    where: { id, householdId: HOUSEHOLD_ID },
+    where: { id, householdId: householdId() },
     include: { dishes: true, participants: true },
   });
   if (!meal) throw new ApiError(404, "Meal plan not found");
   const h = await db.household.findUniqueOrThrow({
-    where: { id: HOUSEHOLD_ID },
+    where: { id: householdId() },
   });
   return {
     ...meal,
@@ -184,7 +185,7 @@ export async function scale(input: unknown) {
   const v = scaleSchema.parse(input);
   return db.$transaction(async (tx) => {
     const recipe = await tx.recipe.findFirst({
-      where: { id: v.recipeId, ...recipeScope },
+      where: { id: v.recipeId, ...recipeScope() },
       include: recipeInclude,
     });
     if (!recipe) throw new ApiError(404, "Recipe not found");

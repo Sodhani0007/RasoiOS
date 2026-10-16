@@ -8,18 +8,26 @@ import { localDate } from "../meals/MealPlanner";
 import { IngredientChecklist } from "../meals/IngredientChecklist";
 import { DietaryCompatibility } from "../meals/DietaryCompatibility";
 import { mealTypes } from "@/lib/validation/planning";
+import type { GenerationRequest } from "@/lib/validation/planning";
 export function RecipeAnalysis({
   recipeId,
   baseServings,
+  context,
 }: {
   recipeId: string;
   baseServings: number;
+  context?: Pick<
+    GenerationRequest,
+    "memberIds" | "date" | "mealType" | "servings"
+  >;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
-  const [ids, setIds] = useState<string[]>([]);
-  const [servings, setServings] = useState(baseServings);
-  const [date, setDate] = useState(localDate());
-  const [mealType, setMealType] = useState("dinner");
+  const [ids, setIds] = useState<string[]>(context?.memberIds ?? []);
+  const [servings, setServings] = useState(context?.servings ?? baseServings);
+  const [date, setDate] = useState(context?.date ?? localDate());
+  const [mealType, setMealType] = useState<string>(
+    context?.mealType ?? "dinner",
+  );
   const [verification, setVerification] = useState<Verification>();
   const [check, setCheck] = useState<InventoryCheck>();
   const [error, setError] = useState("");
@@ -28,7 +36,15 @@ export function RecipeAnalysis({
     api<Member[]>("members")
       .then((m) => {
         setMembers(m.filter((i) => i.active));
-        setIds(m.filter((i) => i.active && i.participating).map((i) => i.id));
+        setIds(
+          m
+            .filter(
+              (i) =>
+                i.active &&
+                (context ? context.memberIds.includes(i.id) : i.participating),
+            )
+            .map((i) => i.id),
+        );
       })
       .catch((e) => setError(e.message));
   }, []);
@@ -43,7 +59,8 @@ export function RecipeAnalysis({
         <Field label={`Servings (base ${baseServings})`}>
           <input
             type="number"
-            min={1}
+            min={0.25}
+            step={0.25}
             max={100}
             value={servings}
             onChange={(e) => {

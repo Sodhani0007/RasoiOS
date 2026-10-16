@@ -5,7 +5,7 @@ import type {
   getRecipes,
   getActivity,
 } from "../lib/db/service";
-type Serialized<T> = T extends Date
+export type Serialized<T> = T extends Date
   ? string
   : T extends Array<infer U>
     ? Serialized<U>[]

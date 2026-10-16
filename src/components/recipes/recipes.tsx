@@ -1,5 +1,7 @@
 "use client";
 import { RecipeAnalysis } from "./RecipeAnalysis";
+import { RecipeDiscovery } from "./RecipeDiscovery";
+import type { Member } from "@/types";
 import { useEffect, useState } from "react";
 import {
   Search,
@@ -127,7 +129,14 @@ function RecipeEditor({
                 )
               }
             >
-              {ingredients.map((i) => (
+              {[
+                ...ingredients,
+                ...recipe.ingredients
+                  .map((i) => i.ingredient)
+                  .filter(
+                    (i) => !ingredients.some((known) => known.id === i.id),
+                  ),
+              ].map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.name}
                 </option>
@@ -139,7 +148,7 @@ function RecipeEditor({
               type="number"
               min="0.001"
               step="any"
-              value={item.quantity}
+              value={item.quantity ?? ""}
               onChange={(e) =>
                 setItems((a) =>
                   a.map((v, i) =>
@@ -240,6 +249,15 @@ function RecipeEditor({
   );
 }
 export function RecipeLibrary() {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [discoveryDate, setDiscoveryDate] = useState(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Calcutta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  );
   const [recipes, setRecipes] = useState<Recipe[]>();
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selected, setSelected] = useState<Recipe>();
@@ -259,6 +277,9 @@ export function RecipeLibrary() {
   }
   useEffect(() => {
     load().catch((e) => setError(e.message));
+    api<Member[]>("members")
+      .then(setMembers)
+      .catch((e) => setError(e.message));
   }, []);
   const shown = recipes?.filter(
     (r) =>
@@ -278,6 +299,34 @@ export function RecipeLibrary() {
         </Badge>
       </div>
       <ErrorBox message={error} />
+      <details className="card discovery-entry" open>
+        <summary>Search the full dataset or request a new dish</summary>
+        <Field label="Check for meal date">
+          <input
+            type="date"
+            value={discoveryDate}
+            onChange={(e) => setDiscoveryDate(e.target.value)}
+          />
+        </Field>
+        <RecipeDiscovery
+          request={{
+            memberIds: members
+              .filter((m) => m.active && m.participating)
+              .map((m) => m.id),
+            date: discoveryDate,
+            mealType: "dinner",
+            servings: Math.max(
+              1,
+              members.filter((m) => m.active && m.participating).length,
+            ),
+            maxMinutes: 120,
+            dishName: "",
+            cuisine: "Indian",
+            preferredLanguage: "English",
+          }}
+          onSelect={setSelected}
+        />
+      </details>
       {notice && (
         <div className="success" role="status">
           {notice}
@@ -379,11 +428,13 @@ export function RecipeLibrary() {
             <Badge>
               {selected.source === "LOCAL"
                 ? "Local recipe"
-                : selected.source === "AI_GENERATED"
-                  ? "AI-generated recipe"
-                  : selected.custom?.preferred
-                    ? "Preferred household version"
-                    : "Retained household version"}
+                : selected.source === "MENDELEY"
+                  ? "Mendeley dataset recipe"
+                  : selected.source === "AI_GENERATED"
+                    ? "AI-generated recipe"
+                    : selected.custom?.preferred
+                      ? "Preferred household version"
+                      : "Retained household version"}
             </Badge>
             <Badge tone="neutral">{selected.defaultServings} servings</Badge>
             <Badge tone="neutral">
@@ -391,6 +442,29 @@ export function RecipeLibrary() {
             </Badge>
           </div>
           <p>{selected.description}</p>
+          {selected.importRecord && (
+            <p className="notice">
+              Kanishka Jain ·{" "}
+              <a
+                href="https://data.mendeley.com/datasets/xsphgmmh7b/1"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Mendeley dataset
+              </a>{" "}
+              · CC BY 4.0. Original content:{" "}
+              {selected.importRecord.originalUrl && (
+                <a
+                  href={selected.importRecord.originalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Archana’s Kitchen
+                </a>
+              )}
+              . {asList(selected.importRecord.warnings).join(" ")}
+            </p>
+          )}
           <div className="tags">
             {asList(selected.dietaryMetadata).map((t) => (
               <Badge key={t} tone="neutral">
@@ -414,9 +488,12 @@ export function RecipeLibrary() {
           <div className="recipe-ingredients">
             {selected.ingredients.map((i) => (
               <div key={i.id}>
-                <span>{i.ingredient.name}</span>
+                <span>
+                  {i.ingredient.name}
+                  {i.rawText && <small>{i.rawText}</small>}
+                </span>
                 <strong>
-                  {i.quantity} {i.unit}
+                  {i.quantity ?? "Unknown"} {i.unit}
                 </strong>
               </div>
             ))}

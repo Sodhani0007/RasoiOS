@@ -28,7 +28,7 @@ const { POST, GET } = await import("../src/app/api/[...path]/route");
 import type { DietaryMember } from "../src/lib/dietary/verifier";
 import type { ResolvedRecipe } from "../src/lib/recipes/resolver";
 import type { PlanningRequest } from "../src/lib/validation/planning";
-beforeAll(() => {
+beforeAll(async () => {
   execFileSync(process.execPath, ["scripts/migrate.mjs"], {
     env: process.env,
     stdio: "pipe",
@@ -46,6 +46,38 @@ afterAll(async () => {
 });
 const date = "2026-10-16";
 const context = { date, mealType: "dinner" };
+it("previews fractional family portions without rounding up or changing inventory", async () => {
+  const person = (await s.getMembers()).find((m) => m.active)!;
+  const before = await s.getInventory();
+  for (const servings of [0.25, 1.25]) {
+    const scaled = await mealService.scale({
+      recipeId: "paneer-bhurji",
+      servings,
+    });
+    expect(
+      scaled.ingredients.find((i) => i.ingredientId === "paneer")?.quantity,
+    ).toBe(50 * servings);
+    const check = await mealService.checkIngredients({
+      date,
+      dishes: [{ recipeId: "paneer-bhurji", servings, memberIds: [person.id] }],
+    });
+    expect(
+      check.ingredients.find((i) => i.ingredientId === "paneer")?.quantity,
+    ).toBe(50 * servings);
+  }
+  await expect(
+    mealService.scale({ recipeId: "paneer-bhurji", servings: 0 }),
+  ).rejects.toThrow();
+  await expect(
+    mealService.checkIngredients({
+      date,
+      dishes: [
+        { recipeId: "paneer-bhurji", servings: -1, memberIds: [person.id] },
+      ],
+    }),
+  ).rejects.toThrow();
+  expect(await s.getInventory()).toEqual(before);
+});
 function member(
   overrides: Partial<DietaryMember> = {},
 ): DietaryMember & { active: boolean } {
@@ -72,6 +104,8 @@ function simpleRecipe(
     id,
     name: id,
     source: "LOCAL",
+    importRecord: null,
+    aliases: [],
     defaultServings: 4,
     prepMinutes: 5,
     cookMinutes: 10,
@@ -91,6 +125,8 @@ function simpleRecipe(
         recipeId: id,
         ingredientId,
         quantity,
+        rawText: null,
+        quantityStatus: "KNOWN",
         unit: "g",
         ingredient: { id: ingredientId, name: ingredientId, category: "Other" },
       },
@@ -586,7 +622,7 @@ describe("Persistent resolution and reviewed generation", () => {
         async () => ({ ...draftRecipe, name: "Discard bowl" }),
       )
     ).draft!;
-    discardDraft({ token: draft.token });
+    await discardDraft({ token: draft.token });
     await expect(
       saveGeneratedRecipe({ token: draft.token, confirmed: true }),
     ).rejects.toThrow("expired or was discarded");

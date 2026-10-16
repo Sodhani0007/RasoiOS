@@ -1,5 +1,12 @@
 "use client";
-import { useEffect, useRef, useId } from "react";
+import {
+  useEffect,
+  useRef,
+  useId,
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+} from "react";
 import { X, LoaderCircle } from "lucide-react";
 export async function api<T>(
   path: string,
@@ -8,7 +15,28 @@ export async function api<T>(
 ): Promise<T> {
   const res = await fetch(`/api/${path}`, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      "x-rasoi-household":
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("rasoi-household") || "demo-household"
+          : "demo-household",
+      // Freely selected profile; this header is not an authentication credential.
+      ...(typeof window !== "undefined" &&
+      sessionStorage.getItem("rasoi-member") &&
+      [
+        "family/profile",
+        "family/meals",
+        "family/meal-requests",
+        "family/meal-selections",
+        "family/cook-updates",
+        "family/suggestions",
+        "recipes/generate",
+        "recipes/generated",
+      ].some((prefix) => path.startsWith(prefix))
+        ? { "x-rasoi-member": sessionStorage.getItem("rasoi-member")! }
+        : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
   });
@@ -78,7 +106,13 @@ export function Field({
   return (
     <label className={wide ? "field wide" : "field"}>
       <span>{label}</span>
-      {children}
+      {isValidElement(children) && typeof children.type === "string"
+        ? cloneElement(children as ReactElement<{ "aria-label"?: string }>, {
+            "aria-label":
+              (children.props as { "aria-label"?: string })["aria-label"] ||
+              label,
+          })
+        : children}
     </label>
   );
 }

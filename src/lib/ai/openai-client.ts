@@ -39,6 +39,29 @@ export async function requestRecipe(prompt: string): Promise<unknown> {
     return response.output_parsed;
   } catch (e) {
     if (e instanceof ApiError) throw e;
+    if (e instanceof OpenAI.RateLimitError)
+      throw new ApiError(
+        429,
+        "OpenAI rate or quota limit reached. Check your account and retry later.",
+      );
+    if (e instanceof OpenAI.AuthenticationError)
+      throw new ApiError(
+        503,
+        "OpenAI credentials were rejected. Ask the admin to check OPENAI_API_KEY.",
+      );
+    if (
+      e instanceof OpenAI.NotFoundError ||
+      e instanceof OpenAI.BadRequestError
+    )
+      throw new ApiError(
+        503,
+        "OpenAI rejected the model configuration or structured-output request. Check OPENAI_MODEL and account access.",
+      );
+    if (e instanceof OpenAI.APIConnectionTimeoutError)
+      throw new ApiError(
+        504,
+        "OpenAI timed out. Your draft was not saved; please retry.",
+      );
     const failure = new ApiError(
       502,
       "AI generation failed or timed out. Your local recipes are still available.",

@@ -1,13 +1,14 @@
+import { householdId, draftOwner } from "../household-context";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   generatedRecipeSchema,
   type GeneratedRecipe,
 } from "../ai/recipe-schema";
-import { requestRecipe, defaultModel } from "../ai/openai-client";
+import { requestRecipe, recipeModelKey, type AiResult } from "../ai/service";
 import { generateSchema, type GenerationRequest } from "../validation/planning";
 import { planningData } from "../meals/service";
-import { db, HOUSEHOLD_ID } from "../db";
+import { db } from "../db";
 import { ApiError, log, recipeInclude, recipeScope } from "../db/service";
 import { resolveRecipe, resolveFromRecipes } from "./resolver";
 import { normalizeIngredient, normalizeDish } from "./aliases";
@@ -15,6 +16,8 @@ import { ingredientKnowledge } from "../dietary/ontology";
 import { verifyRecipe, type Verification } from "../dietary/verifier";
 type Draft = {
   token: string;
+  ownerId: string;
+  householdId: string;
   requestKey: string;
   request: GenerationRequest;
   recipe: GeneratedRecipe;
@@ -94,9 +97,11 @@ export async function generateRecipe(
     .update(
       JSON.stringify({
         ...request,
+        householdId: householdId(),
+        ownerId: draftOwner(),
         memberIds: [...request.memberIds].sort(),
         version: data.stateVersion,
-        model: process.env.OPENAI_MODEL || defaultModel,
+        model: recipeModelKey(),
       }),
     )
     .digest("hex");
@@ -145,8 +150,19 @@ export async function generateRecipe(
         })),
     });
     let validated;
+    let usedModel = recipeModelKey();
     try {
-      validated = validateGeneratedRecipe(await provider(prompt));
+      const result = await provider(prompt);
+      const envelope =
+        result &&
+        typeof result === "object" &&
+        "data" in result &&
+        "provider" in result
+          ? (result as AiResult<unknown>)
+          : null;
+      validated = validateGeneratedRecipe(envelope ? envelope.data : result);
+      if (envelope)
+        usedModel = `${envelope.provider}:${envelope.model}${envelope.fallbackUsed ? " (fallback)" : ""}`;
     } catch (e) {
       if (e instanceof ApiError) throw e;
       throw new ApiError(
@@ -171,16 +187,18 @@ export async function generateRecipe(
     }
     const draft: Draft = {
       token: randomUUID(),
+      ownerId: draftOwner(),
+      householdId: householdId(),
       requestKey: key,
       request,
       recipe,
       verification,
       warnings,
-      model: process.env.OPENAI_MODEL || defaultModel,
+      model: usedModel,
       generatedAt: new Date().toISOString(),
       expiresAt: Date.now() + 30 * 60 * 1000,
     };
-    drafts.set(draft.token, draft);
+    await persistDraft(draft);
     return draft;
   })();
   pending.set(key, generation);
@@ -191,20 +209,25 @@ export async function generateRecipe(
   }
 }
 export const saveDraftSchema = z
-  .object({ token: z.string().uuid(), confirmed: z.literal(true) })
+  .object({
+    token: z.string().uuid(),
+    confirmed: z.literal(true),
+    acknowledgeUncertainty: z.boolean().default(false),
+  })
   .strict();
 export async function saveGeneratedRecipe(input: unknown) {
-  const { token } = saveDraftSchema.parse(input);
+  const { token, acknowledgeUncertainty } = saveDraftSchema.parse(input);
   prune();
-  const draft = drafts.get(token);
+  const draft = await getDraft(token);
   if (!draft)
     throw new ApiError(
       410,
       "Draft expired or was discarded. Generate and review a new draft.",
     );
   if (
-    draft.recipe.ingredients.some((i) => i.quantity === null || i.uncertain) ||
-    draft.warnings.length
+    !acknowledgeUncertainty &&
+    (draft.recipe.ingredients.some((i) => i.quantity === null || i.uncertain) ||
+      draft.warnings.length)
   )
     throw new ApiError(
       422,
@@ -214,7 +237,7 @@ export async function saveGeneratedRecipe(input: unknown) {
     const existingRecord = await tx.recipeGenerationRecord.findUnique({
       where: {
         householdId_requestKey: {
-          householdId: HOUSEHOLD_ID,
+          householdId: householdId(),
           requestKey: draft.requestKey,
         },
       },
@@ -222,7 +245,7 @@ export async function saveGeneratedRecipe(input: unknown) {
     });
     if (existingRecord) return existingRecord.recipe;
     const library = await tx.recipe.findMany({
-      where: recipeScope,
+      where: recipeScope(),
       include: recipeInclude,
     });
     const existing =
@@ -231,7 +254,7 @@ export async function saveGeneratedRecipe(input: unknown) {
     if (existing) return existing;
     const members = await tx.householdMember.findMany({
       where: {
-        householdId: HOUSEHOLD_ID,
+        householdId: householdId(),
         id: { in: draft.request.memberIds },
         active: true,
       },
@@ -243,7 +266,10 @@ export async function saveGeneratedRecipe(input: unknown) {
         "Participants changed. Generate and review again.",
       );
     const verification = verifyRecipe(draft.recipe, members, draft.request);
-    if (verification.status !== "VERIFIED")
+    if (
+      verification.status === "REJECTED" ||
+      (verification.status === "NEEDS_CONFIRMATION" && !acknowledgeUncertainty)
+    )
       throw new ApiError(
         422,
         "Draft no longer satisfies all selected participants. Review their rules and generate again.",
@@ -254,8 +280,8 @@ export async function saveGeneratedRecipe(input: unknown) {
         where: { id: i.ingredientId },
         create: {
           id: i.ingredientId,
-          name: knowledge.name,
-          category: knowledge.category,
+          name: knowledge?.name ?? i.name,
+          category: knowledge?.category ?? "unclassified",
         },
         update: {},
       });
@@ -268,7 +294,12 @@ export async function saveGeneratedRecipe(input: unknown) {
         ingredients: {
           create: ingredients.map((i) => ({
             ingredientId: i.ingredientId,
-            quantity: i.quantity!,
+            quantity: i.quantity,
+            quantityStatus: i.uncertain
+              ? "NEEDS_CONFIRMATION"
+              : i.quantity === null
+                ? "UNKNOWN"
+                : "KNOWN",
             unit: i.unit,
           })),
         },
@@ -277,7 +308,7 @@ export async function saveGeneratedRecipe(input: unknown) {
         },
         generation: {
           create: {
-            householdId: HOUSEHOLD_ID,
+            householdId: householdId(),
             requestKey: draft.requestKey,
             requestedDish: normalizeDish(draft.request.dishName),
             model: draft.model,
@@ -297,12 +328,78 @@ export async function saveGeneratedRecipe(input: unknown) {
     return recipe;
   });
 }
-export function discardDraft(input: unknown) {
+export async function discardDraft(input: unknown) {
   const { token } = z
     .object({ token: z.string().uuid() })
     .strict()
     .parse(input);
-  drafts.delete(token);
+  const draft = await getDraft(token);
+  if (draft) {
+    drafts.delete(token);
+    await db.householdRecipeDraft.deleteMany({
+      where: { token, householdId: draft.householdId, ownerId: draft.ownerId },
+    });
+  }
   return { discarded: true };
 }
 export type RecipeDraft = Draft;
+
+async function persistDraft(draft: Draft) {
+  drafts.set(draft.token, draft);
+  await db.householdRecipeDraft.upsert({
+    where: { token: draft.token },
+    create: {
+      token: draft.token,
+      householdId: draft.householdId,
+      ownerId: draft.ownerId,
+      payload: JSON.parse(JSON.stringify(draft)),
+      expiresAt: new Date(draft.expiresAt),
+    },
+    update: { payload: JSON.parse(JSON.stringify(draft)) },
+  });
+}
+async function getDraft(token: string): Promise<Draft | undefined> {
+  const owner = draftOwner();
+  let d = drafts.get(token);
+  if (!d) {
+    const row = await db.householdRecipeDraft.findFirst({
+      where: {
+        token,
+        ownerId: owner,
+        householdId: householdId(),
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (row) d = row.payload as unknown as Draft;
+  }
+  if (d && (d.ownerId !== owner || d.householdId !== householdId()))
+    throw new ApiError(404, "Draft not found");
+  return d && d.expiresAt > Date.now() ? d : undefined;
+}
+export async function updateGeneratedDraft(input: unknown) {
+  const v = z
+    .object({ token: z.string().uuid(), recipe: generatedRecipeSchema })
+    .strict()
+    .parse(input);
+  const draft = await getDraft(v.token);
+  if (!draft) throw new ApiError(410, "Draft expired. Generate again.");
+  const { recipe, warnings } = validateGeneratedRecipe(v.recipe);
+  const data = await db.$transaction((tx) =>
+    planningData(tx, draft.request.date),
+  );
+  const members = data.members.filter(
+    (m) => draft.request.memberIds.includes(m.id) && m.active,
+  );
+  if (members.length !== draft.request.memberIds.length)
+    throw new ApiError(409, "Participants changed");
+  if (recipe.prepMinutes + recipe.cookMinutes > draft.request.maxMinutes)
+    warnings.push("Recipe exceeds requested time limit.");
+  const result = {
+    ...draft,
+    recipe,
+    warnings,
+    verification: verifyRecipe(recipe, members, draft.request),
+  };
+  await persistDraft(result);
+  return result;
+}

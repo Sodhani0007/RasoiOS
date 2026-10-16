@@ -5,3 +5,16 @@ node_modules/
 *.db-journal
 *.tsbuildinfo
 test-results/
+
+data/imports/
+demo-credentials-*.json
+dataset-*.html
+dataset-*.json
+dataset-bundle.js
+.env.*
+!.env.example
+.vercel/
+data/migration/
+playwright-report/
+.env.local
+rasoios-vercel-source.zip

@@ -1,7 +1,6 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api } from "../ui/shared";
 import { usePathname } from "next/navigation";
 import {
   CookingPot,
@@ -11,29 +10,49 @@ import {
   BookOpen,
   CalendarDays,
   History,
-  ArrowUpRight,
   Leaf,
 } from "lucide-react";
-const links = [
-  ["/dashboard", "Dashboard", LayoutDashboard],
-  ["/household", "Household", Users],
-  ["/inventory", "Kitchen Inventory", Package],
-  ["/recipes", "Recipe Library", BookOpen],
-  ["/meal-planner", "Meal Planner", CalendarDays],
-  ["/activity", "Activity History", History],
+import { api, ErrorBox } from "../ui/shared";
+const familyLinks = [
+  ["/family", "Family dashboard", LayoutDashboard],
+  ["/family/choose-meal", "Choose My Meal", CalendarDays],
+  ["/family/my-meals", "My meals", BookOpen],
+  ["/family/my-preferences", "My preferences", Users],
+  ["/family/requests", "Coordinate meals", CalendarDays],
+  ["/household", "Household profiles", Users],
+  ["/inventory", "Kitchen inventory", Package],
+  ["/recipes", "Recipe library", BookOpen],
+  ["/meal-planner", "Meal planner", CalendarDays],
+  ["/activity", "Activity history", History],
+  ["/family/settings", "Household settings", Users],
+] as const;
+const cookLinks = [
+  ["/cook", "Cooking dashboard", CookingPot],
+  ["/cook/today", "Today's meals", CalendarDays],
+  ["/cook/ingredients", "Ingredient checklist", Package],
+  ["/cook/preparation", "Preparation board", CookingPot],
 ] as const;
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const [name, setName] = useState("Your household");
+  const cook = path.startsWith("/cook");
+  const [households, setHouseholds] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+  const [selected, setSelected] = useState("demo-household");
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
-    api<{ name: string }>("household")
-      .then((h) => setName(h.name))
-      .catch(() => {});
+    const saved = sessionStorage.getItem("rasoi-household") || "demo-household";
+    setSelected(saved);
+    setReady(true);
+    api<typeof households>("households")
+      .then(setHouseholds)
+      .catch((e) => setError(e.message));
   }, []);
   return (
     <div className="app">
       <aside className="sidebar">
-        <Link href="/dashboard" className="brand">
+        <Link href="/" className="brand">
           <span className="brand-icon">
             <CookingPot size={27} />
           </span>
@@ -42,9 +61,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <small>A little less kitchen chaos.</small>
           </span>
         </Link>
-        <div className="nav-caption">YOUR KITCHEN, TOGETHER</div>
+        <div className="nav-caption">{cook ? "COOK VIEW" : "FAMILY VIEW"}</div>
         <nav>
-          {links.map(([href, label, Icon]) => (
+          {(cook ? cookLinks : familyLinks).map(([href, label, Icon]) => (
             <Link
               key={href}
               href={href}
@@ -57,33 +76,59 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="sidebar-note">
           <Leaf size={24} />
-          <h3>Made for your family.</h3>
+          <h3>Your kitchen, together.</h3>
           <p>Different tastes. Shared meals. A kitchen that remembers.</p>
-          <span>
-            RENAISSANCE 2026 <ArrowUpRight size={13} />
-          </span>
-        </div>
-        <div className="household-chip">
-          <div className="avatar">{name.slice(0, 1)}</div>
-          <div>
-            <strong>{name}</strong>
-            <small>Single-household demo</small>
-          </div>
         </div>
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <span>
-            <span className="status-dot" /> Your kitchen, in sync
-          </span>
-          <span className="demo-label">
-            PHASE 02 <span>·</span> LOCAL DEMO
-          </span>
+          <label className="household-select">
+            Household{" "}
+            <select
+              aria-label="Select household"
+              value={selected}
+              onChange={(e) => {
+                sessionStorage.setItem("rasoi-household", e.target.value);
+                sessionStorage.removeItem("rasoi-member");
+                setSelected(e.target.value);
+              }}
+            >
+              {households.length ? (
+                households.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))
+              ) : (
+                <option value={selected}>Your household</option>
+              )}
+            </select>
+          </label>
+          <nav className="view-switch" aria-label="Switch view">
+            <Link
+              href="/family"
+              className={!cook ? "button primary" : "button secondary"}
+            >
+              Family View
+            </Link>
+            <Link
+              href="/cook"
+              className={cook ? "button primary" : "button secondary"}
+            >
+              Cook View
+            </Link>
+          </nav>
         </header>
-        <main>{children}</main>
+        <main>
+          <ErrorBox message={error} />
+          {ready ? (
+            <div key={selected}>{children}</div>
+          ) : (
+            <div className="empty">Opening your kitchen…</div>
+          )}
+        </main>
         <footer>
-          RasoiOS <span>·</span> The Kitchen That Remembers, Decides &
-          Coordinates.
+          RasoiOS · The Kitchen That Remembers, Decides & Coordinates.
         </footer>
       </div>
     </div>

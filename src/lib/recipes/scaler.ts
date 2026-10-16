@@ -15,6 +15,7 @@ export type ScalableRecipe = {
     ingredientId: string;
     quantity: unknown;
     unit: string;
+    quantityStatus?: string;
     ingredient?: { name: string };
   }[];
 };
@@ -32,6 +33,7 @@ export function scaleRecipe(
   return recipe.ingredients.map((i) => {
     const ingredientId = normalizeIngredient(i.ingredientId);
     const valid =
+      (!i.quantityStatus || i.quantityStatus === "KNOWN") &&
       typeof i.quantity === "number" &&
       Number.isFinite(i.quantity) &&
       i.quantity > 0;
