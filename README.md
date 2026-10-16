@@ -1,8 +1,10 @@
-# RasoiOS — Phase 1
+# RasoiOS — Phase 2
 
 **The Kitchen That Remembers, Decides & Coordinates.** Built for Renaissance 2026, Human Potential.
 
-A local, single-household demo for Indian household kitchen coordination. No paid APIs or API credentials are needed. All business data lives in SQLite, accessed through server-side Next.js routes.
+A local, single-household demo for Indian household kitchen coordination. Local recipe resolution, dietary verification and meal planning need no paid API. Optional AI recipe generation uses server-side OpenAI credentials. All business data lives in SQLite, accessed through server-side Next.js routes.
+
+See [PHASE2.md](PHASE2.md) for the complete Phase 2 module map, APIs, rule semantics, AI setup, verification limits and Phase 3 handoff.
 
 ## Run locally
 
@@ -19,7 +21,7 @@ Open **http://127.0.0.1:3000**. On macOS/Linux, use `npm` instead of `npm.cmd` a
 
 If `.env` already exists, preserve it instead of copying over it. `DATABASE_URL="file:./dev.db"` resolves to `prisma/dev.db`. The database persists across server restarts. The seed is transactional and skips an existing demo household, preserving changes on subsequent runs. Back up the SQLite file while the server is stopped. Do not run Prisma reset against a database you want to keep.
 
-`OPENAI_API_KEY` in `.env.example` is reserved for a future phase, is not used, and must never be exposed through a `NEXT_PUBLIC_` variable. `.env` and database files are ignored by Git.
+Optional `OPENAI_API_KEY` and `OPENAI_MODEL=gpt-5-mini` enable explicit AI recipe generation. Neither is required for local planning. Never expose the key through a `NEXT_PUBLIC_` variable. `.env` and database files are ignored by Git.
 
 Individual database commands:
 
@@ -41,6 +43,8 @@ npm.cmd start
 Both development and production scripts bind to loopback. This demo has no authentication and is not suitable for public hosting or multiple unrelated households.
 
 ## Implemented
+
+- Phase 2: household-first recipe resolution, ingredient scaling, deterministic dietary/fasting/allergy checks, aggregated shortages, explainable shared/two-dish recommendations, reviewed AI generation and persistent meal snapshots. See [Phase 2 details](PHASE2.md).
 
 - Responsive dashboard using real database counts, selected participants, use-by alerts and recent activity.
 - Household member CRUD; activate/deactivate; meal participation defaults; separate allergies and dislikes; preferred language; configurable ingredient/category exclusions and fasting rules.
@@ -117,7 +121,7 @@ Verified on Windows with Node 24.19.0, 16 October 2026:
 | Check                                                   | Result                                                      |
 | ------------------------------------------------------- | ----------------------------------------------------------- |
 | TypeScript strict compilation                           | Passed                                                      |
-| Vitest integration suite                                | 13 tests passed                                             |
+| Vitest integration suite                                | 45 tests passed                                             |
 | Fresh isolated database migration and seed              | Passed                                                      |
 | Repeat demo setup without data loss                     | Passed                                                      |
 | Production build                                        | Passed                                                      |
@@ -127,14 +131,8 @@ Verified on Windows with Node 24.19.0, 16 October 2026:
 
 The Prisma CLI overrides pin patched `effect` and `deepmerge-ts` versions; migration, generation, seed and tests were checked with those overrides. The optional Windows Rolldown binding avoids a missing optional dependency in the test runner installation. The migration wrapper exclusively creates an absent SQLite file before applying migrations, working around a first-run Windows schema-engine failure without truncating an existing database.
 
-## Limits and Phase 2 handoff
+## Limits and Phase 3 handoff
 
-- Phase 1 stores preferences; it does not solve dietary compatibility or certify any recipe as safe for allergies, Jain practices or fasting. Fasting allowed lists do not yet imply closed-world semantics; the future solver must define and explain precedence, including allergy exclusions.
-- Participation is a saved household default; scheduling actual meals is a Phase 2 task. `MealPlan` and `MealParticipant` provide the foundation. Member deletion sets historical participant references to null while retaining name snapshots.
-- No AI, voice, YouTube, recommendations, automatic replanning, shopping or payments are implemented. Future UI is labeled as coming in Phase 2/3.
-- Inventory expiry is a user-provided date, not an assessment of food safety. Use-soon alerts include today through three days ahead and flag expired items separately.
-- Units use explicit culinary conventions (240 ml/cup, 15 ml/tbsp, 5 ml/tsp). Mass/volume conversion requires future ingredient-specific density; count conversion requires piece weights. Recipe serving scaling should multiply quantities by requested/default servings and preserve unknown inventory amounts.
-- Household recipe metadata is inherited from its original; the UI calls this out. A future dietary engine must recompute from actual ingredients and household rules after every edit.
-- Inventory events, custom overrides and state versions are committed in the same transactions as edits. Future replanning should read a household version, calculate requirements using canonical IDs, and verify the version before committing a plan. Add explicit plan revision/idempotency handling before background jobs.
-- Add authentication, authorization, user-selected households and deployment-grade operational controls before multi-user hosting. Never accept household IDs solely from browser input.
-- Add the OpenAI adapter only on the server, validate generated recipes with Zod, mark source `AI_GENERATED`, and retain provenance. Language preferences are already stored; tutorial and voice integrations remain separate future adapters.
+The current engine verifies configured ingredient-level rules and flags uncertainty; it does not guarantee allergen-free preparation. Unknown inventory is never treated as sufficient. Meal snapshots are historical, and planning never deducts stock. Live OpenAI generation and browser visual QA were not verified in this session. The app remains a local single-household demo.
+
+See [PHASE2.md](PHASE2.md) for all new endpoints, the additive migration, scoring weights, draft lifecycle, fasting semantics, automated verification, known limits and the Phase 3 integration handoff.

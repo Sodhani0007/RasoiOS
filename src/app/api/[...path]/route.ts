@@ -3,6 +3,14 @@ import { Prisma } from "@prisma/client";
 import { ZodError, z } from "zod";
 import * as service from "@/lib/db/service";
 import { db } from "@/lib/db";
+import * as meals from "@/lib/meals/service";
+import { resolveRecipe, resetRecipe } from "@/lib/recipes/resolver";
+import {
+  generateRecipe,
+  saveGeneratedRecipe,
+  discardDraft,
+} from "@/lib/recipes/generator";
+import { dateOnly } from "@/lib/validation/planning";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 type Context = { params: Promise<{ path: string[] }> };
@@ -50,7 +58,72 @@ async function handler(req: Request, context: Context) {
     };
     let data: unknown;
     let status = 200;
-    if (method === "GET") {
+    const endpoint = path.join("/");
+    if (method === "GET" && endpoint === "recipes/resolve") {
+      const query = z
+        .object({ name: z.string().trim().min(1).max(120) })
+        .strict()
+        .parse(Object.fromEntries(new URL(req.url).searchParams));
+      data = await resolveRecipe(query.name);
+    } else if (method === "GET" && resource === "meals" && !customId) {
+      const query = z
+        .object({ date: dateOnly.optional() })
+        .strict()
+        .parse(Object.fromEntries(new URL(req.url).searchParams));
+      data = id ? await meals.getMeal(id) : await meals.getMeals(query.date);
+    } else if (
+      method === "POST" &&
+      [
+        "recipes/generate",
+        "recipes/generated/save",
+        "recipes/generated/discard",
+        "recipes/scale",
+        "recipes/verify",
+        "meals/recommend",
+        "meals",
+        "ingredients/check",
+        "groceries/calculate",
+      ].includes(endpoint)
+    ) {
+      const input = await body();
+      switch (endpoint) {
+        case "recipes/generate":
+          data = await generateRecipe(input);
+          break;
+        case "recipes/generated/save":
+          data = await saveGeneratedRecipe(input);
+          status = 201;
+          break;
+        case "recipes/generated/discard":
+          data = discardDraft(input);
+          break;
+        case "recipes/scale":
+          data = await meals.scale(input);
+          break;
+        case "recipes/verify":
+          data = await meals.verify(input);
+          break;
+        case "meals/recommend":
+          data = await meals.recommend(input);
+          break;
+        case "meals":
+          data = await meals.saveMeal(input);
+          status = 201;
+          break;
+        default:
+          data = await meals.checkIngredients(input);
+      }
+    } else if (
+      method === "POST" &&
+      resource === "recipes" &&
+      id === "reset" &&
+      customId
+    ) {
+      z.object({ confirmed: z.literal(true) })
+        .strict()
+        .parse(await body());
+      data = await resetRecipe(customId);
+    } else if (method === "GET") {
       if (resource === "household" && !id) data = await service.getHousehold();
       else if (resource === "members" && !customId)
         data = id ? await service.getMember(id) : await service.getMembers();

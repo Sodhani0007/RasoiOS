@@ -1,4 +1,269 @@
 @import "tailwindcss";
+.planner-controls {
+  margin-bottom: 28px;
+}
+.planner-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.participant-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0 22px;
+}
+.participant-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fafbf7;
+  font-size: 12px;
+  cursor: pointer;
+}
+.participant-options label.selected {
+  border-color: #8cab85;
+  background: #edf4e8;
+}
+.participant-options small {
+  display: block;
+  font-size: 10px;
+}
+.secondary-controls {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+.planner-action {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.planner-action p {
+  max-width: 620px;
+}
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin: 22px 0;
+}
+.menu-card > h2 {
+  font-size: 23px;
+  margin: 15px 0;
+}
+.menu-card .recipe-meta {
+  padding: 12px 0;
+}
+.dish-allocation {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+.dish-allocation > small {
+  display: block;
+  margin-top: 4px;
+}
+.dietary-result {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #66775f;
+}
+.dietary-result ul,
+.reasons,
+.exclusions ul {
+  list-style: disc;
+  padding-left: 18px;
+  font-size: 11px;
+  margin: 12px 0;
+}
+.dietary-result > small {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+}
+.reasons li {
+  margin-bottom: 7px;
+}
+.menu-details {
+  border-top: 1px solid var(--line);
+  margin-top: 15px;
+  padding-top: 20px;
+}
+.menu-details table {
+  white-space: normal;
+}
+.menu-details td,
+.menu-details th {
+  padding: 10px 8px;
+  min-width: 70px;
+}
+.menu-details td small {
+  min-width: 110px;
+}
+.menu-details summary,
+.exclusions summary,
+.today-meals summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 15px 0;
+}
+.save-plan {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+}
+.save-plan .check {
+  font-size: 11px;
+  line-height: 1.6;
+  align-items: flex-start;
+}
+.save-plan input {
+  flex-shrink: 0;
+}
+.grocery-summary {
+  background: #f0f5e9;
+  border-radius: 9px;
+  padding: 15px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.grocery-summary ul {
+  list-style: disc;
+  padding-left: 18px;
+}
+.grocery-summary p {
+  margin-top: 9px;
+  font-size: 11px;
+}
+.saved-plans {
+  margin-top: 35px;
+}
+.saved-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fffefb;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.saved-plan-row small {
+  display: block;
+  margin-top: 5px;
+}
+.saved-plan-row > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.ai-panel {
+  margin: 24px 0;
+  background: #f4f2e6;
+}
+.ai-panel > svg {
+  color: #8b8754;
+  margin-bottom: 12px;
+}
+.ai-panel > p {
+  font-size: 12px;
+  margin: 12px 0 20px;
+  max-width: 700px;
+}
+.ai-panel .instructions {
+  margin-top: 24px;
+}
+.exclusions {
+  font-size: 12px;
+}
+.exclusions h3 {
+  margin-top: 20px;
+}
+.recipe-analysis {
+  border-top: 1px solid var(--line);
+  margin-top: 25px;
+  padding-top: 8px;
+}
+.recipe-analysis .planner-grid {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.recipe-analysis .table-scroll {
+  margin-top: 20px;
+}
+.recipe-analysis td,
+.recipe-analysis th {
+  padding: 12px 9px;
+}
+.compact label {
+  padding: 8px 12px;
+}
+.today-meals > div + div {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 15px;
+}
+.today-meals td,
+.today-meals th {
+  padding: 10px 7px;
+  font-size: 10px;
+}
+@media (max-width: 1100px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+  .planner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .secondary-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .secondary-controls .field:first-child {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 700px) {
+  .planner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .planner-action {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  .participant-options label {
+    padding: 10px 12px;
+    flex: 1 1 40%;
+  }
+  .recipe-analysis .planner-grid {
+    grid-template-columns: 1fr;
+  }
+  .saved-plan-row {
+    padding: 15px;
+    align-items: flex-start;
+  }
+  .menu-card > h2 {
+    font-size: 21px;
+  }
+  .today-meals .table-scroll {
+    max-width: 100%;
+  }
+  .tabs {
+    flex-wrap: wrap;
+  }
+}
 :root {
   --bg: #f8f9f5;
   --ink: #203b34;

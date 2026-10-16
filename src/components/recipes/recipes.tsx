@@ -1,4 +1,5 @@
 "use client";
+import { RecipeAnalysis } from "./RecipeAnalysis";
 import { useEffect, useState } from "react";
 import {
   Search,
@@ -247,6 +248,7 @@ export function RecipeLibrary() {
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [resetting, setResetting] = useState(false);
   async function load() {
     const [r, i] = await Promise.all([
       api<Recipe[]>("recipes"),
@@ -300,6 +302,7 @@ export function RecipeLibrary() {
             ["all", "All recipes"],
             ["LOCAL", "Local favourites"],
             ["HOUSEHOLD_CUSTOM", "Our family’s versions"],
+            ["AI_GENERATED", "AI recipes"],
           ].map(([v, label]) => (
             <button
               key={v}
@@ -376,7 +379,11 @@ export function RecipeLibrary() {
             <Badge>
               {selected.source === "LOCAL"
                 ? "Local recipe"
-                : "Preferred household version"}
+                : selected.source === "AI_GENERATED"
+                  ? "AI-generated recipe"
+                  : selected.custom?.preferred
+                    ? "Preferred household version"
+                    : "Retained household version"}
             </Badge>
             <Badge tone="neutral">{selected.defaultServings} servings</Badge>
             <Badge tone="neutral">
@@ -424,6 +431,49 @@ export function RecipeLibrary() {
             <p className="info-strip">
               Optional swaps: {asList(selected.substitutions).join(" ")}
             </p>
+          )}
+          <RecipeAnalysis
+            key={selected.id + selected.updatedAt}
+            recipeId={selected.id}
+            baseServings={selected.defaultServings}
+          />
+          {selected.custom && (
+            <div className="card-actions">
+              <button
+                onClick={() => {
+                  const original = recipes?.find(
+                    (r) => r.id === selected.custom?.originalRecipeId,
+                  );
+                  if (original) setSelected(original);
+                }}
+              >
+                View original recipe
+              </button>
+              <button
+                disabled={resetting}
+                onClick={async () => {
+                  setResetting(true);
+                  try {
+                    const original = await api<Recipe>(
+                      `recipes/reset/${selected.id}`,
+                      "POST",
+                      { confirmed: true },
+                    );
+                    await load();
+                    setSelected(original);
+                    setNotice(
+                      "Original restored as preferred. Your household copy is retained.",
+                    );
+                  } catch (e) {
+                    setError((e as Error).message);
+                  } finally {
+                    setResetting(false);
+                  }
+                }}
+              >
+                Use original by default
+              </button>
+            </div>
           )}
           <div className="modal-actions">
             <button

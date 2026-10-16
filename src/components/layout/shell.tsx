@@ -52,7 +52,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <Icon size={19} />
               <span>{label}</span>
-              {href === "/meal-planner" && <small>SOON</small>}
             </Link>
           ))}
         </nav>
@@ -78,7 +77,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <span className="status-dot" /> Your kitchen, in sync
           </span>
           <span className="demo-label">
-            PHASE 01 <span>·</span> LOCAL DEMO
+            PHASE 02 <span>·</span> LOCAL DEMO
           </span>
         </header>
         <main>{children}</main>

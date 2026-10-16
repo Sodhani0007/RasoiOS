@@ -1,4 +1,5 @@
 "use client";
+import { TodayMeal } from "./meals/TodayMeal";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -163,23 +164,7 @@ export function Dashboard() {
             </span>
           </div>
         </section>
-        <section className="card meal-card">
-          <div className="section-heading">
-            <h2>Today’s meal</h2>
-            <Badge tone="neutral">PHASE 2</Badge>
-          </div>
-          <div className="meal-placeholder">
-            <CalendarDays size={34} />
-            <h3>A little less “aaj kya banega?”</h3>
-            <p>
-              Meal planning is coming next. For now, build a kitchen that knows
-              your family.
-            </p>
-            <Link className="button secondary" href="/recipes">
-              Explore your recipes <ArrowRight size={16} />
-            </Link>
-          </div>
-        </section>
+        <TodayMeal />
         <section className="card">
           <div className="section-heading">
             <h2>A little attention, less waste</h2>
